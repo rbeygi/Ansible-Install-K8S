@@ -1,0 +1,27 @@
+- hosts: all
+  become: yes
+  vars_prompt:
+    - name: "user_name"
+      prompt: "Enter a name for k8s user"
+      private: no
+  tasks:
+  - name: Install CRI-O container runtime
+    import_role:
+      name: cri-o
+      tasks_from: install
+  - name: Install Kubernetes dependencies
+    import_role:
+      name: kubernetes
+      tasks_from: dependencies
+  - name: Install Kubernetes
+    import_role:
+      name: kubernetes
+      tasks_from: install
+  - name: Kubernetes create cluster
+    import_role:
+      name: kubernetes
+      tasks_from: create-cluster
+  - name: Kubernetes join workers 
+    import_role:
+      name: kubernetes
+      tasks_from: join-worker

@@ -1,0 +1,73 @@
+  - name: Intilizing Kubernetes Cluster
+    command: kubeadm init --pod-network-cidr "{{ pod_network_cidr }}"  --apiserver-advertise-address "{{ k8s_master_ip }}" --control-plane-endpoint "{{ k8s_cp_ip }}"
+    run_once: true
+    delegate_to: masters
+
+  - name: Create directory for kube config.
+    file:
+      path: /home/{{ user_name }}/.kube
+      state: directory
+      owner: "{{ user_name }}"
+      group: "{{ user_name }}"
+      mode: 0755
+    when:
+      - inventory_hostname in groups.masters
+
+  - name: Copy /etc/kubernetes/admin.conf to user home directory /home/{{ user_name }}/.kube/config.
+    copy:
+      src: /etc/kubernetes/admin.conf
+      dest: /home/{{ user_name }}/.kube/config
+      remote_src: yes
+      owner: "{{ user_name }}"
+      group: "{{ user_name }}"
+      mode: '0644'
+    when:
+      - inventory_hostname in groups.masters
+
+  # - pause: seconds=30
+
+  - name: Remove the cache directory.
+    file:
+      path: /home/{{ user_name }}/.kube/cache
+      state: absent
+    when:
+      - inventory_hostname in groups.masters
+
+  - name: copy calico custom resources file
+    template: 
+      src: custom-resources.yaml
+      dest: /home/{{ user_name }}/custom-resources.yaml
+    when:
+      - inventory_hostname in groups.masters
+    become_user: "{{ user_name }}"
+
+  - name: Create Pod Network & RBAC.
+    shell: "{{ item }}"
+    with_items:
+      - kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/tigera-operator.yaml
+      - kubectl apply -f /home/{{ user_name }}/custom-resources.yaml
+      # - kubectl apply -f {{ rbac_manifest_file }}
+    when:
+      - inventory_hostname in groups.masters
+    become: yes
+    become_user: "{{ user_name }}"
+
+  - name: Get the token for joining the nodes with Kuberentes master.
+    shell: kubeadm token create --print-join-command
+    register: kubernetes_join_command
+    when:
+      - inventory_hostname in groups.masters
+
+  - debug: 
+      msg: "{{ kubernetes_join_command.stdout }}"
+    when:
+        - inventory_hostname in groups.masters
+
+  - name: Configure kubectl command auto-completion.
+    lineinfile:
+      dest: /home/{{ user_name }}/.bashrc
+      line: 'source <(kubectl completion bash)'
+      insertafter: EOF
+    when:
+      - inventory_hostname in groups.masters
+    become_user: "{{ user_name }}"

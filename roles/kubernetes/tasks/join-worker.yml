@@ -1,0 +1,8 @@
+  - name: Join cluster
+    shell: "{{ hostvars['masters'].kubernetes_join_command }} >> joined.txt"
+    args:
+      chdir: $HOME
+      creates: joined.txt
+    register: node
+    when:
+        - inventory_hostname in groups.workers

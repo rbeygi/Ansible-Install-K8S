@@ -1,0 +1,5 @@
+kubernetes_version: 1.25.0-00
+pod_network_cidr: 10.244.0.0/16
+k8s_master_ip: 192.168.10.50
+k8s_cp_ip: 95.81.95.126
+rbac_manifest_file: 1

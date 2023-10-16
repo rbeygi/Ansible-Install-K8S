@@ -1,0 +1,31 @@
+  - name: Add Google official GPG key
+    apt_key:
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      state: present
+
+  - name: Add Kubernetes Repository
+    apt_repository:
+      repo: deb http://apt.kubernetes.io/ kubernetes-xenial main 
+      state: present
+      filename: kubernetes
+      mode: 0600
+
+  - name: Installing Kubernetes Cluster Packages.
+    apt: 
+      name:
+        - kubeadm={{ kubernetes_version }}
+        - kubectl={{ kubernetes_version }}
+        - kubelet={{ kubernetes_version }}
+      state: present
+
+  - name: Enable service kubelet, and enable persistently
+    service: 
+      name: kubelet
+      enabled: yes
+
+  # - name: Reboot all the kubernetes nodes.
+  #   reboot:
+  #     post_reboot_delay: 60
+  #     reboot_timeout: 80
+  #     connect_timeout: 300
+  #     test_command: uptime

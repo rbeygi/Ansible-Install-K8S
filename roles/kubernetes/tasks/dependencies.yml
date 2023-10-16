@@ -1,0 +1,54 @@
+  - name: Make the Swap inactive
+    command: swapoff -a
+
+  - name: Remove Swap entry from /etc/fstab.
+    lineinfile:
+      dest: /etc/fstab
+      regexp: swap
+      state: absent
+  - name: Create a empty file for kubernetes sysctl params.
+    copy:
+      content: ""
+      dest: /etc/sysctl.d/99-kubernetes-cri.conf
+      force: no
+
+  - name: add configuration
+    blockinfile:
+      path: "/etc/sysctl.d/99-kubernetes-cri.conf"
+      block: |
+            net.bridge.bridge-nf-call-iptables = 1
+            net.bridge.bridge-nf-call-ip6tables = 1
+            net.ipv4.ip_forward = 1
+
+  - name: enable overlayFS & VxLan pod communication
+    shell: |
+            sudo modprobe overlay
+            sudo modprobe br_netfilter
+
+  - name: Apply sysctl params without reboot.
+    command: sysctl --system
+
+  - name: Installing Prerequisites for Kubernetes
+    apt: 
+      name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg-agent
+        - vim
+        - software-properties-common
+      state: present
+
+  - name: creating {{ user_name }} user
+    user: 
+      name: "{{ user_name }}"
+      append: yes
+      state: present
+      createhome: yes
+      shell: /bin/bash
+
+  - name: "{{ user_name }} for passwordless sudo"
+    lineinfile:
+      dest: /etc/sudoers
+      line: '{{ user_name }} ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
